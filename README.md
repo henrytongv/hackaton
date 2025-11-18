@@ -1,2 +1,16 @@
 # hackaton
-source code for project "My first Hedera Account" for the hackaton
+Source code for project "My first Hedera Account" for the hackaton
+
+Main objectives of the project: Make Web3 hyper simple. Just start the desktop app and you get a full Hedera Account ready to get started in a personal wallet or for coding. It even comes already with 10 tiny bars of balance
+
+Detailed description will be in the project's hackaton page
+
+This repo contains two projects:
+- The Desktop app, should run anywhere java runs: Windows, Linux, Mac
+- The backend server app, should run anywhere java runs. For this demo we are using Google Cloud Run
+
+## The Desktop App
+It is a simple window that shows you your new Hedera account ready to be used in testnet
+
+## The backend server
+It is a private process that creates a new Hedera account and returns its data to the calller Desktop App
