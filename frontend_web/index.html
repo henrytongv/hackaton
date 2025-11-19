@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hedera Account Generator</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <style>
+    :root{
+      --warm-bg: #fff7ed; /* very light warm */
+      --warm-accent: #ff8a4b; /* warm orange */
+      --warm-accent-dark: #d86a2f;
+      --muted: #6b4f3a; /* good contrast on light */
+      --surface: #ffffff;
+      --focus: #ffb57a;
+    }
+    body{
+      background: linear-gradient(180deg,var(--warm-bg),#fff);
+      color: var(--muted);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      padding: 1.25rem;
+    }
+    .brand {
+      color: var(--warm-accent-dark);
+    }
+    .card {
+      background: var(--surface);
+      border: none;
+      box-shadow: 0 6px 18px rgba(216,106,47,0.08);
+      border-radius: 0.75rem;
+    }
+    .btn-warm{
+      background: var(--warm-accent);
+      color: #fff;
+      border: none;
+    }
+    .btn-warm:focus{
+      box-shadow: 0 0 0 3px rgba(255,181,122,0.35);
+      outline: none;
+    }
+    .math-box{
+      font-weight:600;
+      font-size:1.25rem;
+    }
+    /* Accessible focus for form controls */
+    input:focus, button:focus {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    /* Responsive small tweaks */
+    @media (max-width:576px){
+      .math-box{font-size:1.1rem}
+    }
+    /* Table styling */
+    .result-table th, .result-table td{vertical-align:middle}
+    /* Visually hidden but accessible */
+    .sr-only-focusable{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
+    .sr-only-focusable:focus{position:static;width:auto;height:auto;overflow:visible}
+  </style>
+</head>
+<body>
+  <a class="sr-only-focusable" href="#main">Skip to main content</a>
+
+  <header class="mb-4">
+    <h1 class="brand" id="page-title">Hello visitor</h1>
+    <p class="lead">Hedera account generator: answer the math question to submit.</p>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section aria-labelledby="challenge-heading" class="mb-4">
+      <div class="card p-3">
+        <h2 id="challenge-heading" class="h5">Step 1 — Solve</h2>
+        <p>The form below will ask you to add two digits. You cannot submit unless the answer is correct.</p>
+
+        <form id="math-form" novalidate aria-describedby="form-desc">
+          <p id="form-desc" class="sr-only">You will see two digits and an input for the sum. An accessible error message appears if wrong.</p>
+
+          <div class="form-row align-items-center">
+            <div class="col-auto math-box mr-3" aria-live="polite" id="math-question" aria-atomic="true">...</div>
+
+            <div class="col-sm-3 col-6">
+              <label for="answer" class="sr-only">Sum of the two digits</label>
+              <input type="number" inputmode="numeric" class="form-control" id="answer" name="answer" aria-required="true" aria-describedby="answer-help" autocomplete="off" required>
+              <small id="answer-help" class="form-text">Type the sum and press Submit.</small>
+            </div>
+
+            <div class="col-auto">
+              <button type="submit" id="submit-btn" class="btn btn-warm" disabled aria-disabled="true">Submit</button>
+            </div>
+          </div>
+
+          <div class="mt-2" role="status" aria-live="polite">
+            <span id="feedback" class="text-danger" role="alert"></span>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section aria-labelledby="result-heading">
+      <div class="card p-3">
+        <h2 id="result-heading" class="h5">Step 2 — Results from account generation</h2>
+        <p>After a successful process the account information will be shown below.</p>
+
+        <div id="result-area" class="mt-2" aria-live="polite">
+          <p class="text-muted">No result yet.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mt-4 text-center text-muted small">2025 - Powered by Hedera Technologies</footer>
+
+  <!-- jQuery + Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
+  <script>
+    // ---------------------------
+    // Configuration: replace DEMO_ENDPOINT with a real service that returns a JSON
+    // object containing keys: value1, value2, value3, value4 (value4 should be a URL)
+    // For demo/testing purposes you can set it to a mock endpoint that returns such JSON.
+    // ---------------------------
+    const DEMO_ENDPOINT = 'https://********************.us-east1.run.app/process';
+
+    // Accessible helpers
+    function setFeedback(message, isError){
+      $('#feedback').text(message);
+      if(isError){
+        $('#feedback').addClass('text-danger').removeClass('text-success');
+      } else {
+        $('#feedback').addClass('text-success').removeClass('text-danger');
+      }
+    }
+
+    // Generate two random digits 0-9 and render question
+    function generateQuestion(){
+      const a = Math.floor(Math.random()*10);
+      const b = Math.floor(Math.random()*10);
+      const sum = a + b;
+      $('#math-question').text(a + ' + ' + b + ' = ?');
+      // store expected on the form element via dataset
+      $('#math-form').data('expected', sum);
+      // clear answer and disable submit
+      $('#answer').val('');
+      $('#submit-btn').prop('disabled', true).attr('aria-disabled','true');
+      setFeedback('', false);
+      $('#result-area').html('<p class="text-muted">No result yet.</p>');
+    }
+
+    // Validate input against expected value
+    function validateAnswer(){
+      const val = $('#answer').val();
+      if(val === ''){
+        $('#submit-btn').prop('disabled', true).attr('aria-disabled','true');
+        setFeedback('', false);
+        return;
+      }
+      const expected = Number($('#math-form').data('expected'));
+      const numeric = Number(val);
+      if(Number.isNaN(numeric)){
+        $('#submit-btn').prop('disabled', true).attr('aria-disabled','true');
+        setFeedback('Please enter a number.', true);
+        return;
+      }
+      if(numeric === expected){
+        $('#submit-btn').prop('disabled', false).attr('aria-disabled','false');
+        setFeedback('Correct — you may submit.', false);
+      } else {
+        $('#submit-btn').prop('disabled', true).attr('aria-disabled','true');
+        setFeedback('That is not correct. Please try again.', true);
+      }
+    }
+
+    // Build and display result table
+    function renderResult(obj){
+      // basic safe-escaping
+      function esc(s){ return String(s); }
+      const table = $(
+        '<div class="table-responsive" role="region" aria-label="Result table">' +
+        '<table class="table table-bordered result-table"><thead class="thead-light"><tr><th scope="col">Field</th><th scope="col">Value</th></tr></thead><tbody>' +
+        '<tr><th scope="row">Account Id</th><td>' + esc(obj.accountId) + '</td></tr>' +
+        '<tr><th scope="row">Public Key</th><td>' + esc(obj.publicKey) + '</td></tr>' +
+		'<tr><th scope="row">Private Key</th><td>Hidden value</td></tr>' +
+        '<tr><th scope="row">Balance in tiny hbars</th><td>10</td></tr>' +
+        '<tr><th scope="row">Verification in blockchain</th><td><a id="value4-link" href="' + esc(obj.hashscanURL) + '" target="_blank" rel="noopener">View account in tesnet web dashboard</a></td></tr>' +
+        '</tbody></table></div>'
+      );
+      $('#result-area').empty().append(table);
+    }
+
+    $(document).ready(function(){
+      generateQuestion();
+
+      // Re-generate question if user focuses on question (keyboard users) and wants a new one
+      $('#math-question').on('keydown', function(e){
+        if(e.key === 'r' || e.key === 'R') generateQuestion();
+      });
+
+      $('#answer').on('input', function(){
+        validateAnswer();
+      });
+
+      $('#math-form').on('submit', function(e){
+        e.preventDefault();
+        const expected = Number($(this).data('expected'));
+        const numeric = Number($('#answer').val());
+        if(numeric !== expected){
+          setFeedback('Your answer is incorrect. Submission blocked.', true);
+          return;
+        }
+
+        // prepare payload
+        const payload = { "inputCode": "justreturndemoaccount" };
+
+        // disable controls during request
+        $('#submit-btn').prop('disabled', true).attr('aria-disabled','true').text('Sending...');
+        setFeedback('Sending request...', false);
+
+        // AJAX POST
+        $.ajax({
+          url: DEMO_ENDPOINT,
+          method: 'POST',
+          contentType: 'application/json; charset=utf-8',
+          data: JSON.stringify(payload),
+          dataType: 'json'
+        })
+        .done(function(response){
+          // Expect response to contain value1..value4
+          if(response && response.hashscanURL !== undefined && response.accountId !== undefined && response.privateKey !== undefined){
+		    console.log("new account created");
+			console.log("public key " + response.publicKey);
+			console.log("private key" + response.privateKey);
+            renderResult(response);
+            setFeedback('Result loaded.', false);
+          } else {
+            // If endpoint doesn't provide expected shape, show friendly message and some debug info
+            $('#result-area').html('<div class="alert alert-warning" role="alert">The endpoint did not return the expected fields (value1..value4). See debug output below.</div>');
+            const pretty = $('<pre>').text(JSON.stringify(response, null, 2));
+            $('#result-area').append(pretty);
+            setFeedback('Received unexpected response from endpoint.', true);
+          }
+        })
+        .fail(function(jqXHR, textStatus, errorThrown){
+          $('#result-area').html('<div class="alert alert-danger" role="alert">Request failed: ' + (textStatus || 'error') + '</div>');
+          setFeedback('Request failed. See result area for details.', true);
+        })
+        .always(function(){
+          $('#submit-btn').prop('disabled', false).attr('aria-disabled','false').text('Submit');
+        });
+      });
+
+    });
+  </script>
+</body>
+</html>
