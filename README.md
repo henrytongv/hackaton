@@ -10,11 +10,11 @@ This repo contains 3 projects:
 - The backend server app, should run anywhere java runs. For this demo we are using Google Cloud Run
 - The frontend web, this is what we used to demo the account creation from a web browser
 
+## The backend server
+It is a private process that creates a new Hedera account and returns its data to the calller Desktop App, both the Desktop App and the Fronted App internally call this service
+
 ## The Desktop App
 It is a simple window that shows you your new Hedera account ready to be used in testnet
-
-## The backend server
-It is a private process that creates a new Hedera account and returns its data to the calller Desktop App
 
 ## The frontned
 Simple html web to allow the user to create a Hedera account from any web browser
